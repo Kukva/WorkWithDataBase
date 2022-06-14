@@ -73,6 +73,7 @@ namespace WorkwithDataBase
                                 recs_in_file = false;
                             }
                         }
+                        Console.ReadLine(); // Задержка консоли
                         break;
                     case 3:
                         if (!recs_in_file) // Проверка на заполненность временного файла
@@ -87,31 +88,36 @@ namespace WorkwithDataBase
                         if (!recs_in_file) // Проверка на заполненность временного файла
                         {
                             Console.WriteLine("В базе нет ни единой записи, попробуйте добавить");
-                            Console.ReadLine(); // Задержка консоли
                         }
                         else
                             OutputRecords();
+
+                        Console.ReadLine(); // Задержка консоли
                         break;
                     case 5:
                         SaveRecords();
                         break;
                     case 6:
                         RaWRecordsfromFile(ref number_of_records, ref recs_in_file);
+                        Console.ReadLine();
                         break;
                     case 7:
                         if (!recs_in_file) // Проверка на заполненность временного файла
                         {
                             Console.WriteLine("В базе нет ни единого сотрудника для изменения данных, попробуйте добавить");
-                            Console.ReadLine(); // Задержка консоли
                         }
                         else
                             SelectionRecord();
+
+                        Console.ReadLine();
                         break;
                     case 8:
                         if (!recs_in_file) // Проверка на заполненность временного файла
                             Console.WriteLine("В базе нет ни единого сотрудника для повышения, попробуйте добавить");
                         else
                             PromoteTypeinRecord();
+
+                        Console.ReadLine();
                         break;
                     case 9:
                         Console.WriteLine($"Кол-во записей - {number_of_records}"); // Вывод кол-ва записей в файле
