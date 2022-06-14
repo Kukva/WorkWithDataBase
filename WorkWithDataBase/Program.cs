@@ -1,4 +1,16 @@
-﻿using System;
+﻿/*
+Программа для учёта сотрудников на предприятии
+
+У сотрудника есть основные атрибуты: Фамилия, Имя, Отчество, Дата рождения и пол, а также Должность и Доп.информация должности
+Естественно у каждой должности индивидуальная доп.информация: Директор - Название предприятия; 
+Начальник подразделения - Название подразделения; Контроллер - Название рабочей области; Рабочий - фамилия Начальника подразделения
+
+Данная программа позволяет ввести учёт сотрудников на предприятии, а именно: Добавлять запись, Удалять запись, Изменять запись,
+Вывод записей, Сохранения базы в отдельном файле, Ввод значений из файла в базу. 
+Также введены дополнительные функции: Выборка по типу должности или по названию подразделения, также возможен вывод кол-ва записей в базе
+
+*/
+using System;
 using System.IO;
 using System.Collections.Generic;
 
@@ -8,11 +20,10 @@ namespace WorkwithDataBase
     {
         static int menu_variants;
 
-        public const string fpath = "DataBase.txt";
-        public const string tempfile = "Temporary.txt";
-        public const string tempfileforcopying = "Copying.txt";
-        public static readonly string[] WorkerType = { "Директор", "НП", "Контроллер", "Рабочий" };
-        static void Menu()
+        public const string tempfile = "Temporary.txt"; // Переменная имени временного файла
+        public const string tempfileforcopying = "Copying.txt"; // Переменная имени временного для копирования файла
+        public static readonly string[] WorkerType = { "Директор", "НП", "Контроллер", "Рабочий" }; // Массив должностей сотрудников
+        static void Menu() // Функция вывода начального Меню работы базы
         {
             Console.Clear();
             Console.Write("Меню работы базы учёта персонала\n" +
@@ -37,23 +48,26 @@ namespace WorkwithDataBase
 
             Menu();
 
-            bool recs_in_file = false;
+            bool recs_in_file = false; // Переменная, отвечающая за наличие хоть каких-то записей во временном файле. Изначально их нет
             int number_of_records = 0;
+
             while (menu_variants != 0)
+            // Цикл постоянной работы программы, после выбора вырианта меню будет проработана соответсвующая функция и снова вызвано Меню
             {
                 switch (menu_variants)
                 {
                     case 1:
                         AddRecord(ref number_of_records);
-                        recs_in_file = true;
+                        recs_in_file = true; // Переменная = true, т.к. появляются записи во временном файле
                         break;
                     case 2:
-                        if (!recs_in_file)
+                        if (!recs_in_file) // Проверка заполненности временного файла
                             Console.WriteLine("В базе нет ни единого сотрудника, попробуйте добавить");
                         else
                         {
                             DeleteRecord(ref number_of_records);
                             if (number_of_records == 0)
+                            // Если кол-во записей после удаления в файле = 0, значит файл пустой, потому recs_in_file = false
                             {
                                 Console.WriteLine("Удалена последняя запись");
                                 recs_in_file = false;
@@ -61,16 +75,19 @@ namespace WorkwithDataBase
                         }
                         break;
                     case 3:
-                        if (!recs_in_file)
+                        if (!recs_in_file) // Проверка на заполненность временного файла
+                        {
                             Console.WriteLine("В базе нет ни единого сотрудника для изменения данных, попробуйте добавить");
+                            Console.ReadLine(); // Задержка консоли
+                        }
                         else
                             ChangeRecord(number_of_records);
                         break;
                     case 4:
-                        if (!recs_in_file)
+                        if (!recs_in_file) // Проверка на заполненность временного файла
                         {
                             Console.WriteLine("В базе нет ни единой записи, попробуйте добавить");
-                            Console.ReadLine();
+                            Console.ReadLine(); // Задержка консоли
                         }
                         else
                             OutputRecords();
@@ -82,23 +99,23 @@ namespace WorkwithDataBase
                         RaWRecordsfromFile(ref number_of_records, ref recs_in_file);
                         break;
                     case 7:
-                        if (!recs_in_file)
+                        if (!recs_in_file) // Проверка на заполненность временного файла
                         {
                             Console.WriteLine("В базе нет ни единого сотрудника для изменения данных, попробуйте добавить");
-                            Console.ReadLine();
+                            Console.ReadLine(); // Задержка консоли
                         }
                         else
                             SelectionRecord();
                         break;
                     case 8:
-                        if (!recs_in_file)
+                        if (!recs_in_file) // Проверка на заполненность временного файла
                             Console.WriteLine("В базе нет ни единого сотрудника для повышения, попробуйте добавить");
                         else
                             PromoteTypeinRecord();
                         break;
                     case 9:
-                        Console.WriteLine($"Кол-во записей - {number_of_records}");
-                        Console.ReadLine();
+                        Console.WriteLine($"Кол-во записей - {number_of_records}"); // Вывод кол-ва записей в файле
+                        Console.ReadLine(); // Задержка консоли
                         break;
                     default:
                         break;
@@ -107,29 +124,36 @@ namespace WorkwithDataBase
             }
 
             FileInfo fileinf = new FileInfo(tempfile);
+            // После завершения работы удаляется временный файл хранения записей
             if (fileinf.Exists) fileinf.Delete();
         }
 
         static int DivHeadCounts(ref List<string> DHNames, string[] arrayreader)
+        // Функция возвращает кол-во Начальников Подразделения во временном файле
         {
 
             string[] array;
+            // Массив значения атрибутов ([0] - Фамилия, [1] - Имя и т.д.)
+
             int DHcount = 0;
+
             foreach (var o in arrayreader)
             {
-                array = o.Split(";");
-                if (array[5] == WorkerType[1])
+                array = o.Split(";"); // Разделение строки на подстроки и ввод в массив
+                if (array[5] == WorkerType[1]) // Проверка на наличие должности Начальник подразделения в записи
                 {
                     DHcount++;
                     DHNames.Add(array[0]);
+                    // Список[0], в котором записываются все фамилии Начальников Подразделения
                 }
             }
             return DHcount;
         }
 
         static void PromoteRec(int vars, ref string wtype, ref string addinf, string[] arrayreader)
+        // Функция изменения/присуждения должности и доп.информации сотруднику
         {
-            switch (vars)
+            switch (vars) // Выбор должности сотрудника
             {
                 case 0:
                     Console.Write("Введите название организации: ");
@@ -147,20 +171,30 @@ namespace WorkwithDataBase
                     addinf = Console.ReadLine();
                     break;
                 case 3:
-
+                    // 3 - Рабочий, для него сделана отдельная функция, выводящая фамилии всех Начальников Подразделения
+                    // Т.к. доп.информация для должности Работник - Фамилия начальника подразделения, то нужно впринципе проверять наличие начальников
                     wtype = WorkerType[vars];
                     int i = 0;
-                    List<string> ListforWorker = new List<string>();
+                    List<string> ListforWorker = new List<string>(); // Список фамилий Начальников подразделения
 
                     if (DivHeadCounts(ref ListforWorker, arrayreader) > 0)
+                    // Условие, проверяющее наличие хоть какого-либо числящегося в базе Начальника Подразделения
                     {
                         Console.WriteLine();
                         Console.WriteLine("На данный момент в базе числятся следующие Начальники подразделения:");
+                        // Вывод фамилий
                         foreach (var o in ListforWorker)
                             Console.WriteLine($"{++i} - {o}");
+                        DSvars:
                         Console.Write("Введите вариант из указанных выше: ");
                         int variant = Convert.ToInt32(Console.ReadLine());
-                        addinf = ListforWorker[i - 1];
+                        if (variant > i || variant < 1) // Проверка правильности ввода варианта из указанных выше
+                        {
+                            Console.WriteLine("Попробуйте вновь ввести вариант из указанных выше");
+                            goto DSvars;
+                        }
+                        else
+                            addinf = ListforWorker[i - 1];
                     }
                     else
                         Console.WriteLine("В базе на данный момент нет ни одного Начальника подразделения, просьба добавить");
@@ -171,25 +205,26 @@ namespace WorkwithDataBase
             }
         }
 
-        static void AddRecord(ref int addedRecords)
+        static void AddRecord(ref int addedRecords) // Функция добавления новой записи во временный файл
         {
             string first_name, second_name, patronymic, date_of_birth, gender, worker_type_str = "", addit_info_of_worker = "";
             int worker_type, add_another_record = 1;
 
-            FileStream fstream = new FileStream(tempfile, FileMode.OpenOrCreate);
-            StreamWriter rec = new StreamWriter(fstream);
-            FileInfo finf = new FileInfo(tempfile);
-            if (!finf.Exists)
-            {
-                finf.CopyTo(tempfileforcopying);
-            }
-            string[] array_to_funct = File.ReadAllLines(tempfileforcopying);
-            fstream.Seek(0, SeekOrigin.End);
+            FileStream fstream = new FileStream(tempfile, FileMode.OpenOrCreate); // Создание потока fstream
+            StreamWriter rec = new StreamWriter(fstream); // Открываем для записи временный файл
 
-        RecordLoop:
+            FileInfo finf = new FileInfo(tempfile);
+            // Открываем файл для копирования его в другой файл. Если такого файла нет, создаём его.
+            finf.CopyTo(tempfileforcopying, true);
+
+            string[] array_to_funct_promote = File.ReadAllLines(tempfileforcopying); // Записываем в массив все строки из скопированного файла
+            fstream.Seek(0, SeekOrigin.End); // Переводим указатель на начало файла
+
+        RecordLoop: // Метка для повторного ввода записи
 
             Console.Clear();
 
+            // Изменение временных переменных для добавления записи в файл
             Console.Write("Введите фамилию: ");
             first_name = Console.ReadLine();
 
@@ -215,45 +250,47 @@ namespace WorkwithDataBase
             worker_type = Convert.ToInt32(Console.ReadLine());
 
 
-            PromoteRec(worker_type - 1, ref worker_type_str, ref addit_info_of_worker, array_to_funct);
+            PromoteRec(worker_type - 1, ref worker_type_str, ref addit_info_of_worker, array_to_funct_promote);
             if (worker_type_str == "" && addit_info_of_worker == "") goto WorkTypeAdd;
+            // Переходим обратно к вводу вариантов если введены неправильные/ошибочные значения
             Console.Clear();
 
             rec.WriteLine(first_name + ";" + second_name + ";" + patronymic + ";" + date_of_birth + ";" + gender + ";" + WorkerType[worker_type - 1] + ";" + addit_info_of_worker);
+            // Полученные данные соединяем в одну строку и в временный файл
 
             addedRecords++;
 
-            Console.WriteLine("Хотите добавить ещё запись?(1 - Да, 2 - Нет):");
+            Console.WriteLine("Хотите добавить ещё запись?(1 - Да, 2 - Нет):"); // Повторный ввод записи
             add_another_record = Convert.ToInt32(Console.ReadLine());
             if (add_another_record == 1)
                 goto RecordLoop;
             else
             {
-                rec.Close();
-                FileInfo finfforclose = new FileInfo(tempfileforcopying);
+                rec.Close(); // Закрываем файл "для записи"
+                FileInfo finfforclose = new FileInfo(tempfileforcopying); // Удаляем временный для копирования файл, дальше он не нужен
                 finfforclose.Delete();
             }
 
         }
 
-        static void DeleteRecord(ref int existingRecords)
+        static void DeleteRecord(ref int existingRecords) // Функция удаления записи
         {
             FileInfo finf = new FileInfo(tempfile);
 
-            if (finf.Exists)
+            if (finf.Exists) // Проверка существования временного файла
             {
-                finf.CopyTo(tempfileforcopying, true);
+                finf.CopyTo(tempfileforcopying, true); // Копирование временного файла в временный для копирования файл
 
             RecNumDelete:
 
-                Console.Write("Выберите нужную запись для удаления (от 1 до {0})\n" +
+                Console.Write("Выберите нужную запись для удаления (от 1 до {0})\n" + // Выбор записи для удаления
                     "(Если хотите отменить удаление введите 0): ", existingRecords);
                 int id = Convert.ToInt32(Console.ReadLine());
 
                 if (id == 0)
                     goto EndOfDelete;
 
-                else if (id < 1 || id > existingRecords)
+                else if (id < 1 || id > existingRecords) // Проверка правильности ввода номера записи
                 {
                     Console.WriteLine("Ошибка ввода номера записи, попробуйте вновь");
                     goto RecNumDelete;
@@ -262,11 +299,16 @@ namespace WorkwithDataBase
                 {
                     int i = 0;
                     string string_for_copy;
+
                     StreamReader sread = new StreamReader(tempfileforcopying);
                     StreamWriter swrite = new StreamWriter(tempfile);
+                    // Открываю два файла, один - временный для записи, другой - временный для копирования для чтения
+                    // Удаление реализовано через перебор всех строк из "для копирования" файла для нахождения нужной
+                    // Строка считывает - Проверяется - Если та что искали: Изменение в ней данных и ввод в временный файли; Если та что не искали: Ввод в временный файл;
+
                     while (!sread.EndOfStream)
                     {
-                        if (i + 1 == id)
+                        if (i + 1 == id) // Проверка нахождения нужной записи
                         {
                             string_for_copy = sread.ReadLine();
                             i++;
@@ -280,12 +322,12 @@ namespace WorkwithDataBase
                     }
                     Console.WriteLine("Запись под номером {0} удалена", id);
                     existingRecords--;
-                    sread.Close();
-                    swrite.Close();
-                    finf = new FileInfo(tempfileforcopying);
+                    sread.Close(); // Закрытия файла для чтения
+                    swrite.Close(); // Закрытие файла для записи
+                    finf = new FileInfo(tempfileforcopying); // Удаления файла для копирования, т.к. он больше нам не нужне
                     finf.Delete();
-                    Console.ReadLine();
-                    Console.Clear();
+                    Console.ReadLine(); // Задержка консоли
+                    Console.Clear(); // Очищение консоли
                 }
             }
             else
@@ -294,20 +336,23 @@ namespace WorkwithDataBase
 
         }
 
-        static void ChangeRecord(int allRecords)
+        static void ChangeRecord(int allRecords) // Функция изменения данных записи
         {
             FileInfo finf = new FileInfo(tempfile);
-            if (finf.Exists)
+
+            if (finf.Exists) // Проверка существования временного файла
             {
-                finf.CopyTo(tempfileforcopying, true);
+                finf.CopyTo(tempfileforcopying, true); // Копирование временного файла в временный для копирования файл
 
             RecNumChange:
-                Console.Write("Выберите запись для удаления (от 1 до {0})\n" +
+                Console.Write("Выберите запись для изменения (от 1 до {0})\n" + // Выбор записи для изменения
                     "(Если хотите отменить удаление введите 0): ", allRecords);
                 int id = Convert.ToInt32(Console.ReadLine());
-                if (id == 0)
+
+                if (id == 0) // Если ввели 0
                     goto EndChange;
-                if (id < 1 || id > allRecords)
+
+                if (id < 1 || id > allRecords) // Проверка правильности ввода варианта
                 {
                     Console.WriteLine("Ошибка ввода номера записи, попробуйте вновь");
                     goto RecNumChange;
@@ -316,18 +361,22 @@ namespace WorkwithDataBase
                 {
                     int i = 0;
                     string string_for_copy;
+
                     StreamReader sread = new StreamReader(tempfileforcopying);
                     StreamWriter swrite = new StreamWriter(tempfile);
+                    // Реализация та же, что и в функции ChangeRecord. Логика та же
+
                     string[] array_to_funct = File.ReadAllLines(tempfileforcopying);
                     while (!sread.EndOfStream)
                     {
-                        if (i + 1 == id)
+                        if (i + 1 == id) // Проверка нахождения нужной записи
                         {
                             string first_name, second_name, patronymic, date_of_birth, gender, worker_type_str = "", addit_info_of_worker = "";
                             int worker_type;
-                            string_for_copy = sread.ReadLine();
+                            string_for_copy = sread.ReadLine(); // Чтение строки из файла
                             Console.Clear();
 
+                            // Изменения временных значений для последующего ввода в запись
                             Console.Write("Введите фамилию: ");
                             first_name = Console.ReadLine();
 
@@ -352,28 +401,30 @@ namespace WorkwithDataBase
                                 "Выберите соответственную должность (Введите число):");
                             worker_type = Convert.ToInt32(Console.ReadLine());
 
-                            //int filepos = sread.BaseStream.Position();
                             PromoteRec(worker_type - 1, ref worker_type_str, ref addit_info_of_worker, array_to_funct);
                             if (worker_type_str == "" && addit_info_of_worker == "") goto WorkTypeChange;
-
-                            //Console.Clear();
+                            // Если введены ошибочные значения в функцию, то возвращаемся в выбор должности
 
                             swrite.WriteLine(first_name + ";" + second_name + ";" + patronymic + ";" + date_of_birth + ";" + gender + ";" + WorkerType[worker_type - 1] + ";" + addit_info_of_worker);
+                            // Ввод записи в файл
                             i++;
                         }
                         else
                         {
-                            string_for_copy = sread.ReadLine();
-                            swrite.WriteLine(string_for_copy);
+                            string_for_copy = sread.ReadLine(); // Чтение строки из файла
+                            swrite.WriteLine(string_for_copy); // Ввод записи в файл
                             i++;
                         }
                     }
                     Console.WriteLine("Запись под номером {0} обновлена", id);
                     sread.Close();
                     swrite.Close();
-                    Console.ReadLine();
-                    Console.Clear();
-                    finf = new FileInfo(tempfileforcopying);
+                    // Закрытие файлов для записи и чтения
+
+                    Console.ReadLine(); // Задержка консоли
+                    Console.Clear(); // Очищение консоли
+
+                    finf = new FileInfo(tempfileforcopying); // Удаление файла для копирования
                     finf.Delete();
 
 
@@ -385,57 +436,68 @@ namespace WorkwithDataBase
             EndChange:;
         }
 
-        static void OutputRecords()
+        static void OutputRecords() // Функция вывода записей временного файла в консоль
         {
             StreamReader sreader = new StreamReader(tempfile);
+
             string[] array;
             string record;
-            Console.Write(" -------------------------------------------------------------------------------------------------\n" +
-                "|     Фамилия |         Имя |    Отчество |  Дата Рожд. |         Пол |   Должность |      Д.П.Д. |\n" +
+
+            Console.Write(" -------------------------------------------------------------------------------------------------\n" + // Вывод атрибутов записи
+                "| Запись |     Фамилия |         Имя |    Отчество |  Дата Рожд. |         Пол |   Должность |      Д.П.Д. |\n" +
                 " -------------------------------------------------------------------------------------------------\n");
+            int numrec = 1;
             while (!sreader.EndOfStream)
             {
                 record = sreader.ReadLine();
-                Console.Write("|");
-                array = record.Split(';');
+                Console.Write("|{0,7} |", numrec++); // Вывод номера записи
+
+                array = record.Split(';'); // Разделение записи на подстроки и запись в массив
                 for (int i = 0; i < 7; i++)
                 {
-                    Console.Write("{0,12} |", array[i]);
+                    Console.Write("{0,12} |", array[i]); // Вывод значений атрибутов записи
                 }
                 Console.WriteLine();
             }
             Console.Write(" -------------------------------------------------------------------------------------------------");
-            Console.ReadLine();
             sreader.Close();
+            Console.ReadLine(); // Задержка консоли
         }
 
-        static void SaveRecords()
+        static void SaveRecords() // Функция сохранения всех записей в файл. Из временного в постоянный
         {
             Console.WriteLine("Введите имя файла куда будете сохранять значения: ");
             string fname = Console.ReadLine();
+            // Строка ввода имени постоянного файла
 
             FileInfo finf = new FileInfo(fname);
         Create:
-            if (finf.Exists)
+            if (finf.Exists) // Проверка существования введённого постоянного файла
             {
 
                 string record;
                 StreamReader sreader = new StreamReader(tempfile);
                 StreamWriter swriter = new StreamWriter(fname);
-                while (!sreader.EndOfStream)
+                // Открытие файлов для чтения и записей
+
+                while (!sreader.EndOfStream) // Ввод всех записей из временного файла в постоянный
                 {
                     record = sreader.ReadLine();
                     swriter.WriteLine(record);
                 }
                 sreader.Close();
                 swriter.Close();
+                // Закрытие файлов для чтения и записи
+
                 Console.WriteLine("Записи из временного файл {0} сохранены в файл {1}", tempfile, fname);
-                Console.ReadLine();
+                Console.ReadLine(); // Задержка консоли
             }
             else
             {
                 Console.Write("Такого файла не существует, хотите создать файл с таким названием или отменить действие?\n" +
                     "(1 - Создать, 2 или любая другая цифра - Отменить): ");
+                // Если файла с таким именем не существует, то предлагается выбор - Создать или Отменить действие
+                // После создания начинается запись из временного файла в новосозданный
                 int arg = Convert.ToInt32(Console.ReadLine());
                 if (arg == 1)
                 {
@@ -448,25 +510,32 @@ namespace WorkwithDataBase
             }
         }
 
-        static void RaWRecordsfromFile(ref int num_recs_in_file, ref bool init)
+        static void RaWRecordsfromFile(ref int num_recs_in_file, ref bool init) // Функция ввода записей из постоянного файла во временный
         {
             num_recs_in_file = 0;
             bool errfile = false;
+            // Переменная для проверки постоянного файла на правильность введённых строк. Изначально переменная false
+            // В файлы вводится определённый шаблон строк - Значения атрибутов, разделённый знаком ";";
+
             Console.WriteLine("Введите название файла: ");
             string fname = Console.ReadLine();
+
             FileInfo finf = new FileInfo(fname);
-            if (finf.Exists)
+
+        RaWfromFile:
+            if (finf.Exists) // Аналогичная проверка в функции SaveRecords
             {
+
                 string record;
                 StreamReader sreader = new StreamReader(fname);
                 StreamWriter swriter = new StreamWriter(tempfile);
                 while (!sreader.EndOfStream)
                 {
                     record = sreader.ReadLine();
-                    if (!errfile)
+                    if (!errfile) // Проверка правильности строк в постоянном файле
                     {
                         string[] array = record.Split(";");
-                        if (array.Length != 7)
+                        if (array.Length != 7) // Если значений в строке 7 (Кол-во атрибутов), то строки в правильном шаблоне, если нет - выполняется условие
                         {
                             errfile = true;
                             Console.WriteLine("Вы открыли файл с неправильным шаблоном.\n " +
@@ -476,61 +545,76 @@ namespace WorkwithDataBase
                             goto EndOfRaW;
                         }
                     }
-                    swriter.WriteLine(record);
+                    swriter.WriteLine(record); // Запись строк из постоянного во временный
                     num_recs_in_file++;
                 }
                 sreader.Close();
                 swriter.Close();
+                // Закрытие файлов для записи и чтения
                 Console.WriteLine("Считано {0} записей из файла {1} и записано во временный файл {2}", num_recs_in_file, fname, tempfile);
-                init = true;
+
+                if (num_recs_in_file == 0)
+                    // Переменная init служит для проверки "Введены ли записи во временный файл".
+                    // Если переменная = 0, значит что из файла было прочитано 0 записей, а значит и во временный файл перенесено 0 записей, временный пуст
+                    init = false;
+                else
+                    init = true;
             }
             else
             {
                 Console.Write("Такого файла не существует, хотите создать файл с таким названием или отменить действие?\n" +
                     "(1 - Создать, 2 или любая другая цифра - Отменить): ");
+                // Аналогичная функция создания постоянного файла в функции SaveRecords
                 int arg = Convert.ToInt32(Console.ReadLine());
                 if (arg == 1)
+                {
                     finf.Create();
+                    errfile = true;
+                    goto RaWfromFile;
+                }
                 else
                     Console.WriteLine("Действие отменено");
             }
-            Console.ReadLine();
         EndOfRaW:;
+            Console.ReadLine(); // Задержка
         }
 
         static void SelectionRecord()
         {
         VarsChange:
-            Console.WriteLine("По какому атрибуту вы хотите сделать выборку?\n" +
+            Console.WriteLine("По какому атрибуту вы хотите сделать выборку?\n" + // Выбор выборки по варианту
                 "1.По занимаемой должности\n" +
                 "2.По подразделению\n" +
                 "Выберите вариант: ");
             int vars = Convert.ToInt32(Console.ReadLine());
-            string record, str;
-            string[] array;
 
+            string str, record;
+            string[] array;
+            int numrec;
             StreamReader sreader = new StreamReader(tempfile);
 
-            switch (vars)
+            switch (vars) // Выбор варианта выборки
             {
                 case 1:
                     Console.Clear();
-                    Console.WriteLine("Введите должность:");
+                    Console.WriteLine("Введите должность:"); // Ввод должности
                     str = Console.ReadLine();
                     if (str == "Начальник подразделения") str = "НП";
+
                     Console.Write(" -------------------------------------------------------------------------------------------------\n" +
-                "|     Фамилия |         Имя |    Отчество |  Дата Рожд. |         Пол |   Должность |      Д.П.Д. |\n" +
+                "| Запись |     Фамилия |         Имя |    Отчество |  Дата Рожд. |         Пол |   Должность |      Д.П.Д. |\n" +
                 " -------------------------------------------------------------------------------------------------\n");
+                    numrec = 1;
                     while (!sreader.EndOfStream)
                     {
-                        record = sreader.ReadLine();
-                        array = record.Split(';');
-                        if (array[5] == str)
+                        // Аналогичный перебор как и в функция Записи и Сохранения. 
+                        array = sreader.ReadLine().Split(";");
+                        if (array[5] == str) // Проверка нужной должности в записи
                         {
-                            Console.Write("|");
+                            Console.Write("|{0,7} |", numrec++); // Вывод номера записи
                             for (int i = 0; i < 7; i++)
                             {
-                                Console.Write("{0,12} |", array[i]);
+                                Console.Write("{0,12} |", array[i]); // Вывод записи
                             }
                             Console.WriteLine();
                         }
@@ -539,47 +623,51 @@ namespace WorkwithDataBase
                     break;
                 case 2:
                     Console.Clear();
-                    Console.Write("Введите подразделение:");
+                    Console.Write("Введите подразделение:"); // Ввод подразделения
                     str = Console.ReadLine();
-                    List<string>[] forarr = new List<string>[2];
-                    for (int i = 0; i < 2; i++)
-                    {
-                        forarr[i] = new List<string>() { };
-                    }
+
+                    string fnofsv = ""; // Фамилия Начальника подразделения
+                    List<string> forarr = new List<string>();
+                    // Массив списков, служащий для нахождения фамилий Начальников подразделения и Рабочих
+                    // Т.к. у Начальников Подразделения в доп.инф-ии введено название подразделения, то нахождение не составит труда
+                    // После Начальников Подразделения я вывожу рабочих, т.к. Рабочий подчиняется Начальнику подразделения, а Начальник служит на подразделении
+
+
                     Console.Write(" -------------------------------------------------------------------------------------------------\n" +
-                "|     Фамилия |         Имя |    Отчество |  Дата Рожд. |         Пол |   Должность |      Д.П.Д. |\n" +
+                "| Запись |     Фамилия |         Имя |    Отчество |  Дата Рожд. |         Пол |   Должность |      Д.П.Д. |\n" +
                 " -------------------------------------------------------------------------------------------------\n");
+                    numrec = 1; // Переменная номера записи
+
                     while (!sreader.EndOfStream)
                     {
                         record = sreader.ReadLine();
                         array = record.Split(';');
+                        // Считывается строка с файла, разделяется на значения и значения сохраняются в массиве
+
                         if (array[5] == WorkerType[3])
-                            forarr[1].Add(record);
+                            forarr.Add(record); // В forarr[1] сохраняется запись сотрудника Рабочего
+
                         else if (array[6] == str)
                         {
-                            //array = record.Split(';');
-                            forarr[0].Add(array[0]);
-                            Console.Write("|");
+                            fnofsv = array[0]; // В переменную сохраняется фамилия НП
+                            Console.Write("|{0,7} |", numrec++);
                             for (int i = 0; i < 7; i++)
                             {
-                                Console.Write("{0,12} |", array[i]);
+                                Console.Write("{0,12} |", array[i]); // Вывод записи начальника подразделения
                             }
                             Console.WriteLine();
                         }
 
                     }
-                    foreach (var o in forarr[0])
+                    foreach (var o in forarr) // Вывод Рабочих, у кого в доп.информации указан нужный Начальник подразделения
                     {
-                        foreach (var c in forarr[1])
+                        array = o.Split(";");
+                        if (array[6] == fnofsv)
                         {
-                            array = c.Split(";");
-                            if (array[6] == o)
-                            {
-                                Console.Write("|");
-                                for (int j = 0; j < 7; j++)
-                                    Console.Write("{0,12} |", array[j]);
-                                Console.WriteLine();
-                            }
+                            Console.Write("|{0,7} |", numrec++);
+                            for (int j = 0; j < 7; j++)
+                                Console.Write("{0,12} |", array[j]);
+                            Console.WriteLine();
                         }
                     }
                     Console.Write(" -------------------------------------------------------------------------------------------------");
@@ -589,15 +677,16 @@ namespace WorkwithDataBase
                     goto VarsChange;
                     break;
             }
-            sreader.Close();
-            Console.ReadLine();
+            sreader.Close(); // Закрытие файла для чтения
+            Console.ReadLine(); // Задержка консоли
 
         }
 
-        static void PromoteTypeinRecord()
+        static void PromoteTypeinRecord() // Функция повышения сотрудника
         {
-            Console.WriteLine("Введите Фамилию сотрудника, которого желаете повысить: ");
+            Console.WriteLine("Введите Фамилию сотрудника, которого желаете повысить: "); // Ввод фамилии сотрудника
             string firstname = Console.ReadLine();
+
             string record;
             string[] sub;
             int wtype = 0;
@@ -606,30 +695,31 @@ namespace WorkwithDataBase
             if (finf.Exists)
             {
                 finf.CopyTo(tempfileforcopying, true);
+
                 StreamReader sreader = new StreamReader(tempfileforcopying);
                 StreamWriter swrite = new StreamWriter(tempfile);
                 string[] array_to_funct = File.ReadAllLines(tempfileforcopying);
                 bool promote = false;
 
                 while (!sreader.EndOfStream)
+                // Аналогичная перезапись из одного файла в другой как в функциях Сохранения и Ввода из файла
                 {
                     record = sreader.ReadLine();
                     sub = record.Split(";");
+
                     if (sub[0] == firstname)
+                    // Перебор на нахождения сотрудника с нужной фамилией
                     {
                         for (int i = 0; i < 4; i++)
                         {
-                            //Console.WriteLine($"Тип {WorkerType[i]}");
-                            if (sub[5] == WorkerType[i])
+                            if (sub[5] == WorkerType[i]) // Проверка должности сотрудника
                             {
-                                //Console.WriteLine($"Работник типа {WorkerType[i]}");
-                                if (i == 0)
+                                if (i == 0) // Если должность Директор, то повышение невозможно
                                     Console.WriteLine("Должность сотрудника с фамилией {0} - Директор, нет возможности повысить", sub[0]);
                                 else
                                 {
                                     Console.WriteLine();
-                                    PromoteRec(i - 1, ref sub[5], ref sub[6], array_to_funct);
-                                    //Console.WriteLine($"Работник типа {sub[5]} - {sub[6]}");
+                                    PromoteRec(i - 1, ref sub[5], ref sub[6], array_to_funct); // Присваивается новая должность
                                     record = String.Join(';', sub);
                                     wtype = i;
                                     promote = true;
@@ -637,7 +727,7 @@ namespace WorkwithDataBase
                                 }
                             }
                         }
-                        if (promote)
+                        if (promote) // Если сотрудник повышен - выводится сообщение, если нет - значит файл перебрал все значения и не нашёл фамилию
                             Console.WriteLine("Сотрудник {0} повышен с {1} до {2}", firstname, WorkerType[wtype], WorkerType[wtype - 1]);
                         else
                             Console.WriteLine("Сотрудник с такой фамилией не повышен");
@@ -648,6 +738,7 @@ namespace WorkwithDataBase
                 swrite.Close();
                 finf = new FileInfo(tempfileforcopying);
                 finf.Delete();
+                // Закрытие файлов для записи и чтения и удаления временного для копирования файла
             }
             else
                 Console.WriteLine("Файла не существует, попробуйте добавить запись");
@@ -655,3 +746,4 @@ namespace WorkwithDataBase
         }
     }
 }
+
